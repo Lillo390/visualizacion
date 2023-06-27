@@ -1,0 +1,7 @@
+"0","confirmed <- ""https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"""
+"0","death <- ""https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"""
+"0","recovered <- ""https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"""
+"0",""
+"0","df.confirmed <- read_csv(confirmed)"
+"0","df.death <- read_csv(death)"
+"0","df.recovered <- read_csv(recovered)"

@@ -1,0 +1,28 @@
+{
+    "id": "9B8F54CC",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1685979925637.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "id": "cdf7f7c3145b4427a29a9ff276c0d572",
+        "name": "spdf.confirmed",
+        "title": "spdf.confirmed",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1685785408,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1685979925637,
+    "read_only": false,
+    "read_only_alternatives": []
+}

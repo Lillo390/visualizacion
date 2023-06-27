@@ -1,0 +1,13 @@
+"0",""
+"0","ui <- fluidPage("
+"0","    tags$b(""Simple counter with an observer""),"
+"0","    br(),"
+"0","    actionButton(""add1"", ""+ 1""),"
+"0","    actionButton(""sub1"", ""- 1""),"
+"0","    actionButton(""reset"", ""set to 0""),"
+"0","    br(),"
+"0","    textOutput(""count"")"
+"0","  )"
+"2","Error in fluidPage(tags$b(""Simple counter with an observer""), br(), actionButton(""add1"",  : 
+  could not find function ""fluidPage""
+"

@@ -1,0 +1,136 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+subtitle: 'Proyecto Visualización Espacial Covid-19'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+```
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","leaflet","rgdal","rgeos","maptools","tidyverse","tmap","devtools","formatR","tmaptools","caret",'mapview','cartography','raster','rasterVis', "readr", "gifski", "tidyr")
+
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+```
+
+```{r}
+library(gifski)
+library(readr)
+library(ggmap)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(geospatial)
+library(sp)
+library(maps)
+library(raster)
+library(tmaptools)
+library(leaflet)
+```
+
+```{r}
+confirmed <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+death <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+recovered <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+df.confirmed <- read_csv(confirmed)
+df.death <- read_csv(death)
+df.recovered <- read_csv(recovered)
+```
+
+```{r}
+by_week <- function(df){
+  cols <- c(1, 2, 3, 4)
+  cols <- c(cols, seq(from=5, to=ncol(df), by=7))
+  df.week <- df[, cols]
+  return(df.week)
+}
+
+df.confirmed.week <- by_week(df.confirmed)
+df.death.week <- by_week(df.death)
+df.recovered.week <- by_week(df.recovered)
+```
+
+```{r}
+tidy_df <- function(df, values_to="Value"){
+  df.tidy <- pivot_longer(data=df, names_to="Day", values_to=values_to, cols=colnames(df)[5:length(df)])
+  df.tidy$Day <- as.Date(x=df.tidy$Day, format = '%m/%d/%y')
+  return(df.tidy)
+}
+
+df.confirmed.tidy <- tidy_df(df.confirmed.week, values_to="confirmed") 
+df.death.tidy <- tidy_df(df.death.week, values_to="death") 
+df.recovered.tidy <- tidy_df(df.recovered.week, values_to="recovered")
+```
+
+```{r}
+df_to_spdf <- function(df){
+  dfwithoutNANs <- df[!is.na(df$Lat),]
+  dfwithoutNANs <- df[!is.na(df$Long),]
+  spdf <-  SpatialPointsDataFrame(coords=dfwithoutNANs[, c("Long", "Lat")], data=dfwithoutNANs, proj4string = CRS(countries_sp@proj4string@projargs))
+  return(spdf)
+}
+
+spdf.confirmed <- df_to_spdf(df.confirmed.tidy)
+spdf.death <- df_to_spdf(df.death.tidy)
+spdf.recovered <- df_to_spdf(df.recovered.tidy)
+```
+
+```{r}
+show_animated_map <- function(spdf, size, filename, col="red"){
+  map <- tm_shape(countries_sp) +
+  tm_borders(col = "black") +
+  tm_shape(spdf) + 
+  tm_bubbles(size=size, col=col) +
+  tm_facets(by="Day", free.coords = F, nrow = 1, ncol = 1)
+
+  tmap_animation(map, width=1800, height = 900, fps = 4, outer.margins = 0, filename = filename)
+}
+```
+
+```{r}
+show_animated_map(spdf.confirmed, size="confirmed", filename="confirmed.gif")
+```
+
+```{r}
+show_animated_map(spdf.death, size="death", filename="death.gif", col="black")
+```
+
+```{r}
+show_animated_map(spdf.recovered, size="recovered", filename= "recovered.gif", col="green")
+```

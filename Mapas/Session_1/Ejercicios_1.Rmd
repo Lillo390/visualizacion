@@ -1,0 +1,217 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"  #Pondría la fecha del día actual
+output:
+ 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  # html_notebook:
+  #   code_folding: hide
+  #   toc: yes
+  #   toc_depth: 4
+# pdf_document:
+#     toc: yes
+#     toc_depth: '4'
+subtitle: 'Parte 1: Visualizaciones básicas con **maps**'
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+## Instalación de librerías.
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","tidyverse","tmap","tmaptools")
+#packages =  c("maps","ggmap","leaflet","rgdal","rgeos","maptools","tidyverse","tmap","formatR","tmaptools","devtools","caret")
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+```
+
+
+```{r,echo=FALSE}
+suppressPackageStartupMessages(library(ggmap))
+#suppressPackageStartupMessages(library(rgdal))
+#suppressPackageStartupMessages(library(rgeos))
+suppressPackageStartupMessages(library(maptools))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tmap))
+```
+
+## Ejemplos de la librería maps
+
+El paquete **maps** proporciona mapas de regiones, países y ciudades, etc.
+Algunos ejemplos: usa, nz, state, world, etc.
+
+```{r,fig.align='center',echo=FALSE}
+library(maps)
+
+maps::map('world', fill=TRUE, col='#ffA50077', border='black', bg='#00000011')
+```
+
+Carga el mapa "usa" en un dataframe con **map_data()** y llámalo *usa*. Observa la estructura del dataframe.
+
+```{r}
+
+```
+
+
+Podemos añadir capas sobre los datos de un mapa con ggplot(). Añade una capa **geom_polygon** sobre los datos de **usa**. Usa los estéticos: x=long, y=lat, agrupa los datos por **group**. 
+
+```{r}
+
+```
+
+Añade un color de relleno (fill) y cambia el color del contorno del polígono (color).
+
+```{r}
+
+```
+
+Añade un punto en la ciudad de Nueva York (coordenadas 40.77 N, 73.98 W) y otro en Los Angeles (33.93 N  118.40 W) con una capa **geom_point()** sobre el mapa anterior. Define ambas ciudades en un mismo data frame llamado **cities**. Dale un tamaño 5 al punto Nueva York y 4 a Los Angeles y escoge un color de punto libremente.
+
+```{r}
+
+```
+
+Carga ahora el mapa **"state"** con map_data. Examina el dataframe.
+
+```{r}
+
+```
+
+Dibuja un mapa de estados con una capa **geom_polygon** agrupada por **group**, rellena por **region** y con contorno blanco.
+
+```{r}
+
+```
+
+Selecciona los datos pertenecientes de las regiones de "california", "oregon" y "washington". Representa los 3 estados con un **geom_polygon** agrupados por **group**. 
+
+```{r}
+
+```
+
+¿Has observado algún problema? 
+Se ha modificado la relación de aspecto entre latitudes y longitudes de manera que se han deformado los estados. Para solucionarlo, añade una capa **coord_fixed(1.3)**.
+
+```{r}
+
+```
+
+Obtén ahora los datos de **"california"** en un dataframe **ca_df**. Examina el dataframe.
+
+```{r}
+
+```
+
+Dibuja el mapa de California agrupado por **group**. Añade una capa **geom_polygon** en color gris y borde negro sobre el mapa. Añade una capa **theme_nothing()**.
+
+
+```{r}
+
+```
+
+Carga los datos de condados estadounidenses (dataframe **county** de map_data) y filtra para la región de California. Llama a al dataframe resultante **ca_county**.Ahora añade otra capa **geom_polygon** sobre el mapa de California anterior para mostrar los condados de California, con sus fronteras en color blanco. Utiliza fill = NA en esta nueva capa. Haz que se muestre el borde del estado de California en negro. 
+Comprueba que el orden de las capas es importante.
+
+```{r}
+
+```
+
+Vamos a tratar de visualizar algún tipo de información sobre los condados (archivo **"ca-counties-wikipedia.txt"**). En concreto creamos un dataframe **pop_and_area** con las areas y poblaciones.
+
+```{r}
+library(stringr)
+library(dplyr)
+
+# make a data frame
+x <- readLines("./ca-counties-wikipedia.txt")
+data <- str_match(x, "^([a-zA-Z ]+)County\t.*\t([0-9,]{2,10})\t([0-9,]{2,10}) sq mi$")[, -1] %>%
+    na.omit() %>%
+    str_replace_all(",", "") %>% 
+    str_trim() %>%
+    tolower() %>%
+    as.data.frame(stringsAsFactors = FALSE)
+
+# give names and make population and area numeric
+pop_and_area <- data.frame(matrix(ncol = 3, nrow = nrow(data)/3))
+names(pop_and_area) <- c("subregion", "population", "area")
+pop_and_area$subregion <- data[1:58,]
+pop_and_area$population <- as.numeric(data[59:116,])
+pop_and_area$area <- as.numeric(data[117:174,])
+  
+```
+
+Visualiza las primeras filas del dataframe **pop_and_area**.
+
+```{r}
+
+```
+
+Unifica los dataframes **ca_county** y **pop_and_area** por la columna **subregion** (usa **inner_join**). Llama al dataframe resultante **cacopa**. Crea una nueva columna en **cacopa** llamada **people_per_mile** que contenga la población/area. 
+
+```{r}
+
+```
+
+Dibuja la densidad de población por condado en un mapa que llamaremos **pop_dens**. Usaremos además la capa **ditch_the_axes** especificada a continuación para no dibujar los ejes, y **theme_bw()**.
+
+```{r}
+# prepare to drop the axes and ticks but leave the guides and legends
+# We can't just throw down a theme_nothing()!
+ditch_the_axes <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank()
+  )
+
+pop_dens <- #
+
+pop_dens
+```
+Vaya, no es lo que esperábamos, aparece casi todo el mapa en el mismo tono. Dibuja un diagrama de barras de la densidad de población (people_per_mile) por condado (subregion). ¿Qué observas?
+
+```{r}
+
+```
+
+¡La densidad de población de San Francisco es tan grande que hace el mapa sea poco informativo!
+Hagamos una transformación logarítmica de la variable de relleno mediante una capa **scale_fill_gradient(trans = "log10")**.
+
+```{r}
+
+```
+
+Haz un zoom a la zona de San Francisco con xlim, ylim a las coordenadas: [36, 38] N, [123, 121] W
+
+```{r}
+
+```
+
+

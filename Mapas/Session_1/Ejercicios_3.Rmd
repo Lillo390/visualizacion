@@ -1,0 +1,108 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+subtitle: 'Parte 3: Ejercicio de revisión'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"  #Pondría la fecha del día actual
+output:
+ 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  # html_notebook:
+  #   code_folding: hide
+  #   toc: yes
+  #   toc_depth: 4
+# pdf_document:
+#     toc: yes
+#     toc_depth: '4'
+
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","tidyverse","tmap")
+#packages = c("maps","ggmap","leaflet","rgdal","rgeos","maptools","tidyverse","tmap","formatR","tmaptools","devtools","caret")
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+```
+
+Ejercicio revisión. *Perros peligrosos*.
+
+El objetivo de este ejercicio es hacer una representación de las localizaciones de perros potencialmente peligrosos a partir de un registro de la ciudad de Austin, Texas [Enlace:city of Austin's open data portal](https://data.austintexas.gov). Además se hará uso de una función **geocode_OSM** que permite pasarle una direccion y devuelve la ubicación.
+
+1. Carga el fichero de datos **Declared_Dangerous_Dogs.csv**: impórtalo en un dataframe y llámale **dogs**. Mira las primeras filas del dataframe.
+
+
+```{r}
+
+```
+
+2. Usa **geocode_OSM** para determinar las localizaciones de cada dirección en un dataframe **dog_coords** de dos columnas (longitud y latitud) llamadas **lonN** y **latN**, respectivamente. Genera las direcciones uniendo los campos, Address, ", Austin,TX" y Zip.Code en una cadena de texto. Si tienes problemas con la función de geolocalización extráelas de la variable **Location**. 
+    
+```{r}
+
+```
+
+3. Añade las dos nuevas columnas al dataframe original.  
+
+
+```{r}
+
+```
+
+4. Descarga un mapa de Austin (zoom=8, maptype='toner-lite') con un rango de representación adecuado para contener todas las direcciones.
+
+```{r}
+
+
+```
+
+5. Representa el mapa y superpón las ubicaciones de los perros peligrosos mediante puntos. Añade transparencia a los puntos (alpha=0.5) para que se siga viendo el mapa.
+
+
+```{r}
+
+```
+
+6. Habrás comprobado que tenemos un "outlier" que se sale del rango de localizaciones normales. Elimínalo, vuelve a descargar el mapa con el rango y el zoom adecuado y repite la representación de los puntos.
+
+
+```{r}
+
+```
+
+7. Marca con puntos de diferente color aquellas ubicaciones en las que haya perros de la raza "Pit Bull", en la variable **Description.of.Dog**
+
+```{r}
+
+```
+
+8. Crea una capa de distribución 2d (**stat_density_2d_filled**) con alpha = 0.3 sobre el mapa de Austin para representar las zonas con mayor concentración de perros peligrosos.
+
+```{r}
+
+```
+

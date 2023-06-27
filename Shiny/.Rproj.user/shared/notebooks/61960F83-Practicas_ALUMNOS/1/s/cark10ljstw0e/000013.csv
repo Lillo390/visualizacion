@@ -1,0 +1,5 @@
+"0","    datos <- eval(parse(text=load(data$datapath)))
+"
+"2","Warning: Unknown or uninitialised column: `datapath`."
+"2","Error in load(data$datapath) : bad 'file' argument
+"

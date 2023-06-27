@@ -1,0 +1,627 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+subtitle: 'Parte 2: Visualizaciones de mapas con **tmap**'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  pdf_document:
+    toc: yes
+    toc_depth: '4'
+  html_notebook:
+    code_folding: hide
+    toc: yes
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+## 1. Instalación de librerías.
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","leaflet","rgdal","rgeos","maptools","tidyverse","tmap","devtools","formatR","tmaptools","caret",'mapview','cartography')
+
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+#verify they are loaded
+search()
+
+```
+
+```{r}
+library(ggmap)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(geospatial) # Instalado en ejercicios anteriores 
+library(sp)
+library(maps)
+library(raster)
+library(tmaptools)
+library(leaflet)
+library(cartography)
+```
+
+## 2. Representación de mapas con el paquete **tmap**
+
+Aunque hay muchos librerías para la representación de mapas (como `ggmap` que ya hemos utilizado), hay librerías más específicas que facilitarán muchas tareas. Una de ellas, que mantiene la filosofía de ggplot, es **tmap**. Esta librería acepta objetos tipo **sp**, mucho más efiecientes que los data frames.
+
+**NOTA:** Esta librería ha cambiado a principios de 2019 y los objetos almacenados son de tipo **sf**, esto afecta al formato de los datos. Si procede se pueden cambiar a formato **sp** con la función **as(..., 'Spatial')**.
+
+[Referencia](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-changes-v2.html)
+_sf (simple features) objects have a simpler structure than sp objects. An sf object is nothing more than a data.frame with a special geometry column that contains the geometries for the corresponding rows. Such a geometry can be of type spatial point(s), line(s) or polygon(s) or any combination of these in a ‘geometrycollection’ (see vignette("sf1")). The layers functions, such as tm_polygons, will only draw what they are supposed to draw (in this case polygons). The newly added layer function tm_sf will draw all geometries_
+
+
+**Primeros pasos con tmap:**. [Mapas usando tmap](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html)
+
+**Información completa en el libro gratuito:** [Geocomputation with R](https://geocompr.robinlovelace.net/)
+
+
+Usaremos un formato de representación por capas, similar a ggmap y a ggplot:
+
++ **tm_shape() <--> ggplot()** Es la forma más general
++ **qtm() <--> qplot()** Es la forma abreviada
+
+### Tipos de presentaciones para documentos html
+
+**tmap_mode("plot")**: para visualación estática
+**tmap_mode("view")**: para visualización interactiva. Permite activar `pop-up`
+
+La opción seleccionada se mantiene activa hasta que se indique lo contrario.
+
+Ejemplo de mapas en modo plot:
+
+```{r}
+tmap_mode("plot")
+data(World)
+tm_shape(World) +
+  tm_polygons("HPI") # Happy Planet Index
+```
+
+Ejemplo de mapas en modo view:
+
+```{r}
+tmap_mode("view")
+data(World)
+#World<-as(World,'Spatial') # No necesario, acepta objetos sp y sf
+tm_shape(World) +
+  tm_polygons("HPI", id = "iso_a3", popup.vars = TRUE)
+
+```
+
+### Ejemplo. Gráfico básico. Quick Thematic Map (qtm)
+
+Los datos utilizados están disponibles en la librería **tmap** y también en [http://www.naturalearthdata.com/](http://www.naturalearthdata.com/) 
+
+**NOTA**: En la última versón de `tmap`los ficheros vienen en formato `sf` en lugar de `sp`. Después de la carga los trasformaremos a clase `sp`con la función `as` por ejemplo **World<-as(World, 'Spatial')**,si bien las funciones de representación del paquete *tmap* acepta ambos formatos.
+
+
+```{r}
+
+library(tmap)
+
+data(World, rivers, metro)
+
+str(World)
+str(rivers)
+str(metro)
+```
+
+Observar la diferencia entre las estructuras de **sf** y **sp**.
+
+```{r}
+World<-as(World, 'Spatial')  # convierte de sf a sp
+rivers<-as(rivers, 'Spatial')
+metro<-as(metro, 'Spatial')
+
+
+str(World,max.level = 2)
+str(World@data) # Para formato sp, si mantenemos el formato sf, se accede directamente a la variable como en un dataframe normal
+#gdp_md: producto interior bruto
+#gdp_cap: per capita
+#HPI: Happy Planet Index (Grado de felicidad)
+
+# solo el mapa
+qtm(shp=World) # shp: mapa. Cambiar por  metro, rivers...
+```
+
+
+Ejercicio: Dibuja el mapa de España con qtm(), en modo interactivo.
+
+```{r}
+tmap_mode('view')
+qtm(World[World$name=='Spain',])
+```
+
+### Choropleth  Map.
+
+Observa el código y cómo las opciones incluidas modifican el aspecto del mapa.
+
+```{r}
+# choropleth
+qtm(World, fill = "economy", format="World", style="col_blind")
+```
+
+```{r}
+tmap_mode('view')
+qtm(World, fill="HPI", fill.n=9, fill.palette="div", fill.auto.palette.mapping=FALSE, 
+	fill.title="Happy Planet Index", fill.id="name", format="World", style="gray")
+
+qtm(World, fill="area", fill.n=9, fill.palette="div", fill.auto.palette.mapping=TRUE, 
+	fill.title="Area", fill.id="area", format="World", style="gray")
+
+```
+
+### Bubble map
+Superponemos dos objetos SP en un mapa. Filosofía análoga a `ggplot`.
+
+```{r}
+qtm(World, borders = NULL) + 
+qtm(metro, symbols.size = "pop2010", 
+    symbols.title.size= "Metropolitan Areas", 
+    symbols.id= "name",
+    format = "World")
+```
+
+### Ejemplo Usando la forma general **tm_XXX**.
+
+Usamos el objeto **countries_spdf**. En primer lugar averiguamos las variables almacenadas en el data frame.
+
+```{r}
+library(sp)
+library(tmap)
+library(geospatial)
+
+str(countries_spdf,max.level = 2)
+str(countries_spdf@data)
+
+```
+
+La capa **tm_shape()** es como la función ggplot(). Contiene el objeto **sp**/**sf** con los datos y es la base sobre la que se superponen las demás capas. Posteriormente veremos que podemos superponer varias capasa **tm_shape()** de diferentes objetos **sp** en un mismo mapa.
+
+La capa **tm_fill()** hace el relleno de los polígonos de manera similar a **tm_polygon(col = "...")**. Veamos un ejemplo.
+
+```{r}
+  p<-tm_shape(countries_spdf) 
+  p<-p+tm_fill(col = "population", style="quantile") # consulta en qué consiste el estilo "quantile"
+  show(p)
+```
+Sintaxis alternativa
+
+```{r}
+  tm_shape(countries_spdf) + tm_fill(col = "population",style="quantile") 
+```
+
+Añade una capa **tm_borders()** con el atributo col = "burlywood". Observa el efecto.
+
+```{r}
+tm_shape(countries_spdf)+tm_fill(col='population')
+
+```
+
+Añade una capa **tm_bubbles()** con size = "population" y col="green". Cambia el color de las fronteras a "black"
+
+
+```{r}
+
+
+```
+
+
+### Otro ejemplo de Choropleth
+
+Aquí representamos dos magnitudes: "well being" en el color de los polígonos, y "area", proporcional al tamaño del texto.
+
+```{r}
+data(World)
+Europe<-World[World$continent=='Europe',]
+
+tmap_mode('plot') # en modo view no funciona el escalado de las etiquetas
+tm_shape(Europe) +
+    tm_polygons("well_being", textNA="Non-European countries", title="Well-Being Index") +
+    tm_text("iso_a3", size="AREA", root=5) + 
+tm_format("World") +
+tm_style("grey")
+```
+
+**NOTA:** No está disponible el mapa 'Europe' como tal en la última versión de tmap (no podemos hacer data(Europe), sino que debemos restringir 'World' por continente.
+
+
+### Ejemplo de Superposición de múltiples objetos **sp** en un mismo mapa.
+
+Comandos para la representación de mapas con [tmap](https://cran.r-project.org/web/packages/tmap/vignettes/tmap-getstarted.html): 
+
+Observa el procedimiento para superponer múltiples objetos (**SpatialPoints**, **SpatialLines** y **SpatialPolygons**) en un mismo mapa.
+
+En primer lugar observamos la estructura de cada uno de los objetos
+
+```{r}
+# Cargamos los datos (con conjuntos incluidos en las librerías)
+#data(package='tmap')
+data(land, rivers, metro)  # land cover, rivers, metropolitan areas
+# land es de tipo raster (stars-raster), las otras dos son de tipo sf
+
+# Transformamos SF en SP
+rivers<-as(rivers,'Spatial')
+metro<-as(metro, 'Spatial')
+
+# Salvo para usar estos códigos no es necesario pasar a tipo sp
+str(land,max.level = 2)
+##str(land@data)
+str(rivers,max.level = 2)
+str(rivers@data)
+str(metro,max.level = 2)
+str(metro@data)
+```
+
+
+Representamos todos simultáneamente (luego explicaremos paso a paso)
+
+```{r}
+tmap_mode('plot')
+tm_shape(land) + 
+    tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) + 
+tm_shape(Europe, is.master = TRUE) +
+    tm_borders() +
+tm_shape(rivers) +
+    tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE) +
+tm_shape(metro) +
+    tm_bubbles("pop2010", "red", border.col = "black", border.lwd=1, 
+        size.lim = c(0, 11e6), sizes.legend = c(1e6, 2e6, 4e6, 6e6, 10e6), 
+        title.size="Metropolitan Population") +
+    tm_text("name", size="pop2010", scale=1, root=4, size.lowerbound = .6, 
+        bg.color="white", bg.alpha = .75, 
+        auto.placement = 1, legend.size.show = FALSE) + 
+tm_format("World") +
+tm_style("natural")
+
+```
+Paso a paso
+
+```{r}
+# capa de land cover con una capa raster de porcentaje de superficie cubierta por árboles (gradiente de color dado por breaks)
+ p<-tm_shape(land) + 
+    tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE)
+  show(p)
+```
+
+Paso 1
+```{r}
+# Añadir capa de datos de Europa y definirlo como capa maestra, mostrar sus fronteras
+
+p<-tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders()   
+show(p)
+```
+
+Paso 2
+
+```{r}
+# Añadir capa de ríos, escalados por su caudal
+tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders() +
+tm_shape(rivers)+
+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)
+
+```
+
+Paso 3
+
+```{r}
+# Añadir capa de burbujas, de tamaño proporcional a la población metropolitana
+tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders() +
+tm_shape(rivers)+
+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)+
+tm_shape(metro)+
+tm_bubbles("pop2010", "red", border.col = "black", border.lwd=1, 
+        size.lim = c(0, 11e6), sizes.legend = c(1e6, 2e6, 4e6, 6e6, 10e6), 
+        title.size="Metropolitan Population") 
+        
+```
+
+Paso 4
+
+```{r}
+# Añadir capa de texto de nombres de metrópolis
+tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders() +
+tm_shape(rivers)+
+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)+
+tm_shape(metro)+
+tm_bubbles("pop2010", "red", border.col = "black", border.lwd=1, 
+        size.lim = c(0, 11e6), sizes.legend = c(1e6, 2e6, 4e6, 6e6, 10e6), 
+        title.size="Metropolitan Population")+ 
+ tm_text("name", size="pop2010", scale=1, root=4, size.lowerbound = .6, 
+        bg.color="white", bg.alpha = .75, 
+        auto.placement = 1, legend.size.show = FALSE)
+         
+ 
+```
+
+Paso 5
+
+```{r}
+# Añadir formato: available formats are: "World", "World_wide", "NLD", "NLD_wide" 
+tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders() +
+tm_shape(rivers)+
+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)+
+tm_shape(metro)+
+tm_bubbles("pop2010", "red", border.col = "black", border.lwd=1, 
+        size.lim = c(0, 11e6), sizes.legend = c(1e6, 2e6, 4e6, 6e6, 10e6), 
+        title.size="Metropolitan Population")+ 
+ tm_text("name", size="pop2010", scale=1, root=4, size.lowerbound = .6, 
+        bg.color="white", bg.alpha = .75, 
+        auto.placement = 1, legend.size.show = FALSE)+ 
+tm_format("World") 
+```
+
+Paso 6
+
+```{r}
+# estilo de representación (gama de colores)
+tm_shape(land) + 
+tm_raster("trees", breaks=seq(0, 100, by=20), legend.show = FALSE) +
+tm_shape(Europe, is.master = TRUE) +
+tm_borders() +
+tm_shape(rivers)+
+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)+
+tm_shape(metro)+
+tm_bubbles("pop2010", "red", border.col = "black", border.lwd=1, 
+        size.lim = c(0, 11e6), sizes.legend = c(1e6, 2e6, 4e6, 6e6, 10e6), 
+        title.size="Metropolitan Population")+ 
+ tm_text("name", size="pop2010", scale=1, root=4, size.lowerbound = .6, 
+        bg.color="white", bg.alpha = .75, 
+        auto.placement = 1, legend.size.show = FALSE)+ 
+tm_format("World") +
+tm_style("natural")
+ 
+```
+#### Consideraciones sobre el mapa anterior
+
++ Este mapa tiene 4 grupos de capas, respectivamente los objetos **land, Europe, rivers, y metro**. El orden de grupo (capa) corresponde al orden en que se dibuja.
++ Los objetos pueden tener **diferentes proyecciones** y también pueden cubrir diferentes áreas (**bounding boxes**). Tanto la `proyección` como `el área cubierta` se toman por defecto del objeto definido en la **primera tm_shape**, pero en este caso en la segunda **tm_shape** ya que es en la que se ha usado **is.master=TRUE**. Ten en cuenta que todos los objetos tienen elementos fuera de Europa (ver por ejemplo **qtm(rivers)**). 
+
+Se puede además añadir una capa **tm_layout()** que controla aspectos como título, márgenes, relación de aspecto, etc.
+
+```{r}
+tmap_mode('plot')
+tm_shape(rivers)+tm_lines()+tm_layout(main.title ="Ríos",main.title.position = "center")
+# Grosor de la línea dependiente de una variable.
+tm_shape(rivers)+tm_lines(lwd="strokelwd", scale=5, legend.lwd.show = FALSE)+tm_layout(main.title ="Ríos",main.title.position = "center")
+tm_shape(metro)+tm_dots()+tm_layout(main.title ="Metro",main.title.position = "center")
+```
+
+### Ejemplos:
+
+Representación de dos mapas simultánemente con asignación de CRS
+
+```{r}
+# Proyección Robinson
+tmap_mode('plot')
+robin <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+
+m1 <- tm_shape(World, projection = robin) +
+  tm_polygons(c("HPI", "gdp_cap_est"),
+              palette = list("RdYlGn", "Purples"),
+              style = c("pretty", "fixed"), n = 7, 
+              breaks = list(NULL, c(0, 500, 2000, 5000, 10000, 25000, 50000, Inf)),
+              title = c("Happy Planet Index", "GDP per capita")) +
+  tm_style("natural", earth.boundary = c(-180, -87, 180, 87))  +
+  tm_format("World", inner.margins = 0.02, frame = FALSE) +
+  tm_legend(position = c("left", "bottom"), bg.color = "gray95", frame = TRUE) +
+  tm_credits(c("", "Robinson projection"), position = c("RIGHT", "BOTTOM"))
+m1
+```
+
+Visualización de tres magnitudes en el mismo mapa
+
+```{r}
+tmap_mode('plot')
+metro$growth <- (metro$pop2020 - metro$pop2010) / (metro$pop2010 * 10) * 100
+
+m2 <- tm_shape(World) +
+    tm_polygons("income_grp", palette = "-Blues", 
+      title = "Income class", contrast = 0.7, border.col = "grey30", id = "name") +
+    tm_text("iso_a3", size = "AREA", col = "grey30", root = 3) +
+  tm_shape(metro) +
+    tm_bubbles("pop2010", col = "growth", border.col = "black",
+      border.alpha = 0.5,
+      breaks = c(-Inf, 0, 2, 4, 6, Inf) ,
+      palette = "-RdYlGn",
+      title.size = "Metro population (2010)", 
+      title.col = "Annual growth rate (%)",
+      id = "name",
+      popup.vars = c("pop2010", "pop2020", "growth")) + 
+  tm_style("gray") +
+  tm_format("World", frame.lwd = 2)
+m2
+```
+
+Fijar un "marker" mediante coordenadas geográficas a partir de dirección.
+
+```{r}
+# obtain geocode address information
+etse <- geocode_OSM('ETSE, Burjassot, Spain',  as.sf = TRUE)
+
+# change to interactive mode
+tmap_mode("view")
+  tm_shape(etse) +
+	tm_markers(text="query")
+```
+
+### Guardar un mapa: **tmap_save()**
+
+Permite grabar mapas estáticos y tambien INTERACTIVOS.
+
+```{r}
+library(sp)
+library(tmap)
+library(geospatial)
+
+tmap_mode('plot')
+tm_shape(countries_spdf) +
+  tm_grid(n.x = 11, n.y = 11, projection = "+proj=longlat") +
+  tm_fill(col = "population", style = "quantile",alpha = 0.2)  +
+  tm_borders(col = "burlywood4")
+
+# Guardar un mapa ESTÁTICO
+tmap_save(filename="population.png")
+
+# Save un mapa INTERACTIVO
+tmap_mode('view')
+tm_shape(countries_spdf) +
+  tm_grid(n.x = 11, n.y = 11, projection = "+proj=longlat") +
+  tm_fill(col = "population", style = "quantile",alpha = 0.2)  +
+  tm_borders(col = "burlywood4")
+tmap_save(filename="population.html")
+
+# La opción por defecto, cuando se utiliza tmap es que el mapa sea interactivo.
+  
+```
+
+### Integración en shiny
+
+Podemos incrustar mapas de tmap en shiny con la función **tmapOutput()** en la parte de UI y **renderTmap()** en el server:
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  tmapOutput("my_tmap")
+)
+
+server <- function(input,output) {
+  output$my_tmap = renderTmap({
+    tm_shape(World, projection="+proj=robin") + tm_polygons("HPI", legend.title = "Happy Planet Index") + tm_style('cobalt')
+  })
+}
+
+shinyApp(ui, server)
+
+```
+
+
+
+## Ejercicio
+
+
+1. Dibuja, en modo plot, el mapa del mundo (countries_spdf), de la librería **geospatial** (usa tm_XXX).
+
+```{r}
+tmap_mode('plot')
+tm_shape(countries_spdf)+tm_polygons()
+```
+
+2. Dibuja el mapa del mundo (countries_spdf) y colorea los paises según el continente.
+
+```{r}
+tm_shape(countries_spdf)+tm_fill(col='region')
+```
+
+3. Añade las iniciales de los paises (**iso_a3**) con tm_text (usa size=1).
+
+```{r}
+tm_shape(countries_spdf)+tm_fill(col='region')+tm_text('iso_a3',size=1)
+```
+
+4. Añade las iniciales de los paises (**iso_a3**) con un tamaño que sea proporcional al área del país (mira ayuda de **tm_text**). Repite pero con el texto proporcional a la población.
+
+```{r}
+tm_shape(countries_spdf)+tm_fill(col='region')+tm_text('iso_a3',size='AREA')
+
+tm_shape(countries_spdf)+tm_fill(col='region')+tm_text('iso_a3',size='population')
+
+```
+
+5. Dibuja los paises y coloréalos según la DENSIDAD de POBLACIÓN (habitantes/km2). La función *area()* del paquete **raster** permite calcular el área de cada polígono de un objeto SpatialPolygonsDataFrame, en metros cuadrados. Prueba el efecto de la opción **style='quantile'** en **tm_fill()**, sobre la densidad.
+
+```{r}
+library(tmap)
+library(raster)
+
+# Calcular el área de cada país en km^2
+countries_spdf$area_km2 <- area(countries_spdf)/10^6
+
+# Calcular la densidad de población
+countries_spdf$density <- countries_spdf$population/countries_spdf$area_km2
+
+# Crear un mapa con la densidad de población como variable de color
+tm_shape(countries_spdf) +
+  tm_fill(col = "density", style = "quantile") +
+  tm_text("iso_a3", size = "area_km2") +
+  tm_layout(frame = FALSE)
+```
+
+6. Repite el mapa anterior pero dibuja solo Europa, sin "Russia".
+
+```{r}
+
+Europe_wo_russia <- countries_spdf[countries_spdf$name!='Russia' & countries_spdf$region=='Europe',]
+
+# Calcular el área de cada país en km^2
+Europe_wo_russia$area_km2 <- area(Europe_wo_russia)/10^6
+
+# Calcular la densidad de población
+Europe_wo_russia$density <- Europe_wo_russia$population/Europe_wo_russia$area_km2
+
+# Crear un mapa con la densidad de población como variable de color
+tm_shape(Europe_wo_russia) +
+  tm_fill(col = "density") +
+  tm_text("iso_a3", size = "area_km2") +
+  tm_layout(frame = FALSE)
+```
+
+7. Observa el efecto del parámetro "style" en **tm_fill**. Prueba **style="quantile"**
+
+```{r}
+tm_shape(Europe_wo_russia) +
+  tm_fill(col = "density", style = "quantile") +
+  tm_text("iso_a3", size = "area_km2") +
+  tm_layout(frame = FALSE)
+```
+
+8. Guarda el mapa en modo estático.
+
+```{r}
+tmap_save(filename = 'Europa_sin_Rusia.png')
+```
+

@@ -1,0 +1,620 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+subtitle: 'Parte 3: Librerías de visualización adicionales'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  # html_notebook:
+  #   code_folding: hide
+  #   toc: yes
+  #   toc_depth: 4
+  # pdf_document:
+  #   toc: yes
+  #   toc_depth: '4'
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+
+## 1. Instalación de librerías.
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","leaflet","rgdal","rgeos","maptools","tidyverse","tmap","devtools","formatR","tmaptools","caret",'mapview','cartography','raster','rasterVis')
+
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+#verify they are loaded
+search()
+
+```
+
+```{r}
+
+library(ggmap)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(geospatial) # Instalado en los programas del día 
+library(sp)
+library(maps)
+library(raster)
+library(tmaptools)
+library(leaflet)
+```
+
+---
+
+## 2.Proyecciones
+
+La Tierra es aproximadamente esférica y, por lo tanto, no es representable en un plano a no ser que se distorsione alguna información (distancias, ángulos, áreas,...). Se pueden observar ejemplos de estas distorsiones en este [video][https://www.youtube.com/watch?v=KUF_Ckv8HbE].
+
+Las proyecciones permiten escoger qué magnitud se desea preservar. Una proyeccion viene caracterizada por un sistema de coordenadas de referencia (**CRS**) que sigue el formato [**proj4**][http://proj4.org/], formado por un string de texto que comienza por el tipo de proyección y diversos atributos separados por "+". El CRS global por defecto es EPSG:4326 - WGS 84 (proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs). Ver la ayuda **?get_proj4** {tmaptools}  para determinar la proyecciones posibles.
+
+Como hemos visto, los objetos espaciales poseen un slot con su CRS (proj4).Podemos obtener el CRS accediando a este slot de las formas ya vistas, y además con la función **CRS** del paquete **sp**, o con **get_projection()** del paquete **tmaptools**.
+
+
+### Cambio de proyección.
+
+En ocasiones los objetos a representar se caracterizan por tener sistemas de referencia distintos. Se puede cambiar la proyección de un objeto **SP** con la función **spTransform()** del paquete **sp**, o del paquete **rgdal**.
+
+El formato es:
+
+**NewCRS_x<-rgdal::spTransform(x, NewCRSobj)**
+
+
+### Ejercicio Proyecciones
+
+Si el objetivo es solo representar un  mapa, es posible incluir la proyeccion en la función **tm_shape(..., projection=...)**
+
+Dibuja el mapa **countries_spdf** con algunas proyecciones: "robin", "eck4", "mill", "longlat", "laea" (ej: **projection="+proj=robin"**). Usa modo estático para apreciar mejor las diferencias.
+
+Solución:
+
+```{r}
+
+```
+
+
+## 3.Raster Data
+
+Ya hemos indicado que hay ciertos datos georreferenciados que se caracterizan por estar definidos en una retícula. Estos datos pueden tener una sola capa, o bien una estructura multicapa, por ejemplo para representar altitudes o bien para mostrar diferentes bandas de una medida, como ocurre con una imagen hiperespectral.
+
++ El paquete SP proporciona las clases **SpatialGrid, SpatialPixels, SpatialGridDataFrame, SpatialPixelsDataFrame**, sin embargo existe un paquete específico para manejar este tipo de datos que mantiene la estructura de los datos definido por el paquete **SP**; **raster package**. Características:
+
++ Importación más fácil de datos tipo `raster`.
++ `Raster` de gran tamaño no se almacenen en memoria.
++ Proporciona funciones específicas para manejar este tipo de datos.
++ Es posible utilizar funciones definidas para objetos SP.
+
+En este enlace hay mucha información sobre este tipo de objetos. [Raster Data in R](https://www.neonscience.org/raster-data-r/)
+
+### Ejemplo objeto raster.
+
+Usaremos los datos **pop** incluidos en el paquete **raster** que contiene la población en los alrededores de Boston en una retícula.
+
+
+```{r}
+library(sp)
+library(raster)
+library(tmap)
+str(pop,max.level = 2)
+print(pop) # es equivalente a escribir una variable por consola
+summary(pop)
+plot(pop)#heatmap
+```
+
+###  RasterLayer, RasterStack, RasterBrick 
+
+La variable **pop** es un objeto de tipo raster, para almacenar una sola capa. Para apilar múltiples capas se usan **RasterStack, RasterBrick**. La retícula es la misma en todas las capas.
+
+El paquete [**rasterVis**](https://oscarperpinan.github.io/rastervis/), proporciona múltiples opciones de visualización de este tipo de ficheros.
+
+### Ejemplo: Visualización objeto **raster** multicapa 
+
+Usamos la variable **pop_by_age**,incluida en raster.
+
+1. Observa la estructura de **pop_by_age** y de su slot **layers**.
+2. Observa cada una de las capas incluidas y la variable almacenada. Ej: `pop_by_age@layers[[1]]$under_1` (Variable de la capa 1)
+3. Se puede acceder directamente a una capa usando [[`nombre capa`]]. Accede a la capa "under_1" de **pop_by_age** usando [[]].
+4. Representa la variable **pop_by_age** usando plot().
+5. Usa tmap para representar **pop** como el argumento de tm_shape() y añadiendo una capa tm_raster().
+6. Usa tmap para representar el objeto **pop_by_age** como argumento de tm_shape() y añadiendo una capa tm_raster().
+7. Cambia la paleta de colores de alguna de las capas tm_raster() anteriores (argumento `palette`, catálogo de paletas en `tmaptools::palette_explorer()`).
+8. Prueba algunas funciones de visualización de **rasterVis** como **levelplot(pop)**.
+
+
+```{r}
+
+```
+
+
+## 4. Importación/Exportación de mapas librería  **rgdal**
+
+Lo habitual no es crear los objetos **SP** sino descargar ficheros de mapas que contienen toda la información. El paquete **rgdal** contiene funciones para realizar esta tarea que proporcionan acceso directo a la biblioteca [GDAL-Geospatial Data Abstraction Library](http://gdal.org) desde R. 
+
+### ¿Cómo funciona `rgdal`?
+
+Podemos leer y escribir datos espaciales usando:
+
+    readOGR () y writeOGR () (para vectorial)  
+    readGDAL () y writeGDAL () (para raster/grids)
+    
+#### Lectura
+
++ vec <- rgdal::readOGR(dsn="/path/to/the/file", layer = "fichero_Sin_extension")  
+
+#### Escritura
+
++ writeOGR(sp_poly_object, dsn = "/path/to/file", driver = "ESRIShapefile")  
+
+Los parámetros proporcionados para cada función varían dependiendo del tipo de archivo espacial que esté leyendo. Tomaremos como ejemplo un archivo en formato ESRI. Es un archivo **shape** - [consiste en varios archivos del mismo nombre, pero con diferentes extensiones](https://en.wikipedia.org/wiki/Shapefile). Todos deberían estar en un directorio y eso es lo que R espera.
+
+Cuando se lee un archivo shape, `readOGR ()` requiere los dos argumentos siguientes:
+
+    datasource name (dsn) # la ruta a la carpeta que contiene los archivos
+                           # esto es una ruta a la carpeta, no un nombre de archivo!
+    layer name (capa) # el nombre del archivo shapefile SIN extensión
+                           # ¡Esto no es una ruta sino sólo el nombre del archivo!
+
+Una vez especificados los parámetros `readOGR` lo carga en un objeto espacial de R.
+
+Por ejemplo:
+
+Hay un archivo shape llamado `london_sport.shp`  en la carpeta `./data/Mapas/` y todos sus archivos asociados (como _. dbf,. prj,. shx_,...) y queremos asignarlo a un objeto **LondonSport**
+
+La instrucción de carga será:
+```{r}
+LondonSport<-readOGR(dsn='./data/Mapas',layer='london_sport')
+```
+
+Vemos su estructura 
+
+```{r}
+str(LondonSport, max.level=2)
+```
+
+Para almacenarlo en un fichero `LondonSport2`, con el formato **ESRI Shapefile**. *SI EL FICHERO EXISTE NO LO SOBREESCRIBE, GENERA UN ERROR*
+
+```{r,include=FALSE}
+#Borro los ficheros generados en posibles ejecuciones anteriores del código
+borrar<-list.files(path='./data/Mapas',pattern = 'LondonSport2.*')
+file.remove(paste0('./data/Mapas/',borrar)) # si existe lo borro
+rgdal::writeOGR(obj=LondonSport,dsn = "./data/Mapas", layer = "LondonSport2",  driver = "ESRI Shapefile")
+
+```
+
+Los formatos de almacenamiento disponibles son
+
+```{r}
+ogrDrivers()
+```
+
+Este objeto (**LondonSport**), contiene información sobre el porcentaje de participación (data$Partic_Per) en actividades deportivas en diferentes zonas de Londres.
+
+Representamos mostrando información adicional.
+
+```{r}
+str(LondonSport,max.level = 2)
+#Representación genérica
+plot(LondonSport)
+#Representación con tmaps
+tm_shape(LondonSport)+tm_borders()+tm_fill("Partic_Per",alpha=0.5)
+tm_shape(LondonSport)+tm_borders()+tm_fill("Partic_Per",style="quantile")
+```
+
+### Lectura de ficheros raster.
+
+Un formato habitual de estos ficheros es el **GeoTIFF**, con extensión tif o tiff. Se puede leer con **readGDAL()** del paquete **rgdal** o bien con la función **raster()** del paquete **raster**. Si se realiza con la función raster la ventaja es que el objeto obtenido ya es del tipo **RasterLayer**
+
+#### Raster files con rGDAL
+
+##### Lectura
+
++ readGDAL/writeGDAL: lectura y escritura 
+
+grd <- readGDAL("/path/to/the/file")
+
+##### Escritura
+
+writeGDAL(sp_grid_object, fname = "/path/to/the/file.tif",drivername = "GTiff", type = "Float32")
+
+Acepta múltiples formatos de escritura
+
+```{r}
+getGDALDriverNames()$name
+```
+
+#### Raster files con raster. 
+
+##### Lectura
+ficheroRaster <-raster("/path/to/the/file")
+
+##### Escritura
+relev <- writeRaster(ficheroRaster,"ficheroRaster.tif",format='GTiff')  
+
+Múltiples formatos de escritura.
+
+```{r}
+writeFormats()
+```
+
+#### Ejercicio. Lectura de fichero raster.
+
+Usamos el fichero **halfdegree-net-migration-1990-2000.tif**. El fichero raster solo tiene una capa.
+
+- Lee el fichero .tif con readGDAL(). Almacena el objeto en una variable MigrationG.
+- Lee el fichero con raster(). Almacena el objeto en una variable MigrationR.
+- Observa con str la estructura de ambos.
+- Representa MigrationR con plot().
+- Representa MigrationR y MigrationG usando tmap (tm_shape()+tm_raster()). 
+- Prueba a usar style="quantile".
+- Haz un levelplot() de MigrationR 
+
+```{r}
+
+```
+
+## 5. Descarga directa de ficheros de mapas.
+
+En los ejemplos anteriores los mapas estaban en un archivo local. También es posible descargar el mapa directamente de un servidor público. Podemos usar el paquete **raster** con la función **getData()**, para realizar esta tarea.
+
+Existen varias fuentes de datos y múltiples opciones dependiendo de la fuente de datos elegida (ver ayuda).
+
+```{r}
+library(raster)
+args(getData)
+```
+
+Los posibles valores de `name` soportados: 
+
++ **countries** - polygons for all countries
++ **GADM** - a database of global administrative boundaries
++ **SRTM** - hole-filled CGIAR-SRTM (90 m resolution) Projections
++ **alt** (elevation) aggregated from SRTM 90 m resolution data between -60 and 60 latitude. '
++ **worldclim** - a database of global interpolated climate data
+
+En el siguiente código se muestran varios ejemplos.
+
+```{r}
+library(ggmap) # para usar geocode
+library(raster)
+SpainRegions <- getData('GADM', country='ESP', level=1) # a nivel de CC.AA.
+class(SpainRegions)
+str(SpainRegions,max.level = 2)
+
+tm_shape(SpainRegions)+tm_fill("NAME_1")+tm_layout("Comunidades", legend.position = c("left","top"))
+tm_shape(SpainRegions)+tm_fill(col='red')+tm_facets("NAME_1")
+
+SpainRegions2 <- getData('GADM', country='ESP', level=2) # a nivel de provincia
+#Quick map
+qtm(SpainRegions2,fill="NAME_2")+tm_layout(legend.show = TRUE,title = "Provincias",legend.position  = c("left","top"))
+# Map 
+tm_shape(SpainRegions2)+tm_fill("NAME_2")+tm_layout(legend.show = TRUE,title = "Provincias",legend.position  = c("left","top"))
+         
+# Precipitación global mensual
+Clima <- getData('worldclim',res=10,var="prec")
+str(Clima,max.level = 2)
+plot(Clima)
+```
+
+#### Ejercicio descarga de mapas. 
+
++ Descarga un mapa 'GADM' de España con el máximo nivel de detalle (level=4) (términos municipales).
++ Representa el mapa de la provincia de Alicante con relleno de color para los términos municipales. Usa **popup.vars** en la capa de relleno para que al pichar en cada término municipal se muestre información de país, comunidad autónoma, provincia y localidad.
++ Almacena el mapa interactivo de Alicante en un fichero.
++ Observa el mapa almacenado en el navegador e indica qué término municipal es mayor, el de Elche o el de Alicante. 
++ Determina cuál es el término municipal más grande y más pequeño de España, e indica su superficie en $Km^2$ (ayuda: usa la función `area()` de **raster**)..
+
+
+Solución
+
+```{r}
+SpainRegions <- getData('GADM', country='ESP', level=4)
+```
+```{r}
+tmap_mode('view')
+Alicante <- SpainRegions[SpainRegions$NAME_2=='Alicante',]
+tm_shape(Alicante)+tm_fill("NAME_4",popup.vars = c(Localidad='NAME_4',Provincia='NAME_3',Comunidad='NAME_2',País='NAME_0'))
+
+```
+```{r}
+tmap_save(filename='Mapa_alicante.html')
+```
+
+```{r}
+SpainRegions$area<-area
+```
+
+
+## 6. Cómo incluir nuevos datos en un dataframe de un objeto SP.
+
+Aunque ya lo hemos hecho en un ejercicio anterior veámoslo con un ejemplo algo más complejo. Realmente esto no es una operación específica de mapas ya que se reduce a la combinación de 2 data frames.
+
+El objetivo es poder añadir nuevos datos al data frame de datos a partir de una columna que relaciona el data frame almacenado en __objetoSP@data__ con un nuevo data frame en el que al menos una columna debe ser común. No es necesario que el orden de los elementos de la columna sea el mismo (existen formas alternativas a la aquí indicada utilizando funciones presentes en la librería **dplyr**, en el apartado *combine datasets dplyr::left_join()*).
+
+### Ejemplo.
+
+1. Considera el mapa de España descargado anteriormente a nivel de provincia (nivel=2). Mira su estructura y las variable almacenadas en el slot data. Haz un plot con qtm incluyendo una leyenda.
+
+```{r}
+
+```
+
+2. Cada polígono tiene asociado un identificador ID que se puede averiguar. Por ejemplo, obtén el primer elemento de la lista de polígonos. El identificador es: SpainRegions2@polygons[[1]]@ID. Podemos calcular todos los identificadores: sapply(SpainRegions2@polygons,function(x){x@ID})
+
+```{r}
+
+```
+
+Para añadir nuevas variables hemos de asegurarnos que se mantiene la correspondencia entre los identificadores de los polígonos y los datos almacenados en @data. Para facilitar esta tareas se usa la función **sp::merge()**.  
+
+Los datos que se van a combinar con el mapa (censo de población de 2016) han sido descargados del Instituto Nacional de Estadística. En el enlace [http://www.ine.es/inebmenu/indice.htm](http://www.ine.es/inebmenu/indice.htm) donde se pueden encontrar datos de diversa índole que pueden ser descargados con varios formatos. Estos datos han sido tratados previamente para facilitar la combinación.
+
+```{r}
+#######Preparación fichero del censo hasta 2016 por provincias. 
+
+library(readr)
+PoblacionSpain <- read_delim("./data/PoblacionSpain.csv", 
+    "\t", escape_double = FALSE)
+colnames(PoblacionSpain)[1]<-"Provincia"
+PoblacionSpain[-1]<-lapply(PoblacionSpain[-1],as.numeric)
+save(PoblacionSpain,file="./data/PoblacionSpain.RData")
+#######fin Preparación fichero del censo hasta 2016 por provincias
+load(file="./data/PoblacionSpain.RData")
+colnames(PoblacionSpain)
+```
+
+#### Comprobaciones antes de la fusión
+
+Debemos verificar que cada elemento de `SpainRegions$NAME_2` se corresponde unívocamante con un elemento en `PoblacionSpain$Provincia`.
+
+```{r}
+print("Comparar si hay duplicados:")
+any(duplicated(SpainRegions2$NAME_2))
+any(duplicated(PoblacionSpain$Provincia))
+
+print("Comparar longitudes:")
+length(SpainRegions2$NAME_2) == length(PoblacionSpain$Provincia)
+
+# Buscamos coincidencias en ambos sentidos (se podria hacer con la librería operaciones join dplyr)
+all((SpainRegions$NAME_2 %in% PoblacionSpain$Provincia))
+
+# Coincidencida en el otro sentido
+all((PoblacionSpain$Provincia %in% SpainRegions2$NAME_2))
+
+# diferencia entre conjuntos
+setdiff(SpainRegions2$NAME_2,PoblacionSpain$Provincia)
+setdiff(PoblacionSpain$Provincia,SpainRegions2$NAME_2)
+```
+
+#### Fusionamos
+
+Usa sp::merge(), pasando el objeto espacial **SpainRegions2** y el dataframe de datos (ver ayuda) para crear un nuevo objeto espacial **SpainRegPoblacion**. Comprueba que las dimensiones del dataframe han cambiado.
+
+```{r}
+
+```
+
+#### Fusión con dplyr::left_join
+
+La opción más rápida es **left_join** de la librería dplyr, no es necesario realizar la comprobaciones previas ya que el data frame que "manda" es el del objeto espacial. Realiza la fusión con left_join(). Guarda el resultado en un nuevo objeto.
+
+```{r}
+
+```
+
+#### Representamos
+
+- Representa con tmaps la variable '2016' de `SpainRegPoblacion` usando tm_fill() y tm_bubbles().
+- Distribuye los datos por style="quantile" y por style="kmeans". 
+- Añade una leyenda en la posición arriba-izquierda.
+- Representa agrupando por CCAA (capa `tm_facets`).
+- Añade la dirección norte con tm_compass() (modo estático).
+
+```{r}
+str(SpainRegPoblacion@data) # queremos representar el slot $2016
+tm_shape(SpainRegPoblacion)+tm_fill('2016',style = "quantile")+tm_layout("Poblacion",
+          legend.position = c("left","top"))
+tm_shape(SpainRegPoblacion)+tm_fill('2016',style = "kmeans")+tm_layout("Poblacion",
+          legend.position = c("left","top"))
+tmap_mode('plot')
+tm_shape(SpainRegPoblacion)+tm_fill('2016',style = "kmeans")+tm_layout("Poblacion",
+          legend.position = c("left","top"))+tm_bubbles(size = "2016")+tm_compass()+tm_facets("NAME_1")
+tmap_mode('view')
+
+```
+
+## 7. Mapas interactivos Leaflet
+
+Uno de los paquetes más utilizado para realizar mapas interactivos es [leaflet](https://rstudio.github.io/leaflet/), que usa ['Leaflet' JavaScript library](http://leafletjs.com), "la biblioteca JavaScript de código abierto líder en el mercado para mapas interactivos". El formato habitual utiliza **pipes**, que van añadiendo capas al mapa (**addTiles(), addMarkers(),  addPolygons(**) para su modificación. 
+
+La mejor forma de aprender a utilizarlo es ver el tutorial del enlace indicado.
+
+### Ejemplo de mapa interactivo con leaflet.
+
+1. Descarga un mapa de las comunidades autónomas de España de "GADM", con **level=1** y almacénalo en un objeto llamado **SpainRegions** y represéntalo con **leaflet** mediante una capa de polígonos.
+
+```{r}
+SpainRegions <- getData('GADM', country='ESP', level=1)
+leaflet(SpainRegions) %>% addPolygons()
+```
+
+2. Mapa Interactivo de la ETSE
+
+```{r}
+ETSE<-geocode_OSM("ETSE, Universitat de Valencia, Spain", as.sf = TRUE)
+m <- leaflet() %>% setView(lng = ETSE$lon, lat = ETSE$lat, zoom = 18)
+m %>% addTiles()  %>% addMarkers(ETSE$lon,ETSE$lat)
+```
+
+Ejemplo leaflet con carga de fichero en formato geojson. Ver fichero texto **us-states.js**
+
+```{r}
+library(geojsonio)
+library(leaflet)
+# From http://leafletjs.com/examples/choropleth/us-states.js
+states <- geojsonio::geojson_read("./data/Mapas/us-states.js", what = "sp")
+
+bins <- c(0, 10, 20, 50, 100, 200, 500, 1000, Inf)
+pal <- colorBin("YlOrRd", domain = states$density, bins = bins)
+
+labels <- sprintf(
+  "<strong>%s</strong><br/>%g people / mi<sup>2</sup>",
+  states$name, states$density
+) %>% lapply(htmltools::HTML)
+
+leaflet(states) %>%
+  setView(-96, 37.8, 4) %>%
+  addProviderTiles("MapBox", options = providerTileOptions(
+    id = "mapbox.light",
+    accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+  addPolygons(
+    fillColor = ~pal(density),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE),
+    label = labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto")) %>%
+  addLegend(pal = pal, values = ~density, opacity = 0.7, title = NULL,
+    position = "bottomright")
+
+```
+
+## 8.  Proveedores de mapas
+
+Podemos usar la librería leaflet para descargar mapas [http://leaflet-extras.github.io/leaflet-providers/preview/]( http://leaflet-extras.github.io/leaflet-providers/preview/)
+
+```{r}
+library(leaflet)
+
+data(World, metro)
+tmap_mode("view")
+
+tm_basemap(leaflet::providers$CartoDB.DarkMatterNoLabels, group = "CartoDB basemap") +
+tm_shape(World) +
+    tm_polygons("HPI", group = "Countries") +
+tm_tiles(leaflet::providers$CartoDB.PositronOnlyLabels, group = "CartoDB labels") +
+tm_shape(metro) +
+    tm_dots(col = "red", group = "Metropolitan areas")
+```
+
+```{r}
+
+library(leaflet)
+
+data(World, metro)
+tmap_mode("view")
+
+tm_basemap(leaflet::providers$Esri.NatGeoWorldMap) +
+tm_shape(World) +
+    tm_polygons("HPI", group = "Countries") +
+tm_tiles(leaflet::providers$CartoDB.PositronOnlyLabels, group = "CartoDB labels") +
+tm_shape(metro) +
+    tm_dots(col = "red", group = "Metropolitan areas")
+```
+
+## 9. Ejemplo de inclusión de un mapa en Shiny
+
+Podemos usar leafletOutput() en la UI y renderLeaflet() en el server para dibujar objetos leaflet.
+
+```{r}
+library(shiny)
+library(tmap)
+library(tmaptools)
+coordenadas <- geocode_OSM('Central Park, NY')
+
+ui <- fluidPage(
+  leafletOutput('myMap')
+)
+
+server <- function(input, output, session) {
+  map = leaflet() %>% addTiles() %>% setView(coordenadas$coords[[1]], coordenadas$coords[[2]], zoom = 15)
+  output$myMap = renderLeaflet(map)
+}
+
+shinyApp(ui, server)
+```
+
+Otro ejemplo:
+
+
+```{r}
+library(shiny)
+library(leaflet)
+library(tmap)
+
+data(World)
+
+varlist <- setdiff(names(World), "geometry")
+
+runApp(list(
+  ui = fluidPage(
+    titlePanel("Shiny tmap!"),
+    sidebarLayout(
+      sidebarPanel(
+        selectInput("var", label = "Variable", choices = varlist, selected = "pop_est_dens")
+      ),
+      mainPanel(
+        leafletOutput("map")
+      )
+    )
+  ),
+  server = function(input, output) {
+    output$map = renderLeaflet({
+      if (packageVersion("tmap") >= 2.0) {
+        tm <- tm_basemap(leaflet::providers$Stamen.TerrainBackground) +
+          tm_shape(World) +
+#          tm_polygons(input$var,legend.show =FALSE) +
+          tm_polygons(input$var,legend.show =TRUE) +
+
+          tm_tiles(leaflet::providers$Stamen.TonerLabels, group = "Labels")
+      } else {
+        tm <- tm_shape(World) +
+          tm_polygons(input$var) +
+          tm_view(basemaps = "Stamen.TerrainBackground")
+      }
+
+      tmap_leaflet(tm)
+    })
+  }
+))
+```

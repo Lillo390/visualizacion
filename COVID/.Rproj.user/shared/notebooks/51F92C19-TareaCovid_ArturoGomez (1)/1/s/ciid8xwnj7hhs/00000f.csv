@@ -1,0 +1,4 @@
+"0","show_animated_map(spdf.confirmed, size=""confirmed"", filename=""confirmed.gif"")"
+"2","Error in show_animated_map(spdf.confirmed, size = ""confirmed"", filename = ""confirmed.gif"") : 
+  could not find function ""show_animated_map""
+"

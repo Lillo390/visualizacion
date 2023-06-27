@@ -1,0 +1,85 @@
+packages = c("maps","ggmap","leaflet","sp","rgdal","rgeos","maptools","tidyverse","tmap","devtools","formatR","tmaptools","caret",'mapview','cartography','raster','rasterVis', "readr", "gifski", "tidyr",'geospatial')
+
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+confirmed <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+death <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+recovered <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+df.confirmed <- read_csv(confirmed)
+df.death <- read_csv(death)
+df.recovered <- read_csv(recovered)
+
+subsampling_week <- function(df){
+  cols <- c(c(1, 2, 3, 4), seq(from=5, to=ncol(df), by=7))
+  df.week <- df[, cols]
+  return(df.week)
+}
+
+df.confirmed.week <- subsampling_week(df.confirmed)
+df.death.week <- subsampling_week(df.death)
+df.recovered.week <- subsampling_week(df.recovered)
+
+
+
+data_tidy <- function(data, values = "Value") {
+  data_tidy <- tidyr::pivot_longer(data = data, names_to = "Day", values_to = values, cols = colnames(data)[5:length(data)])
+  data_tidy$Day <- as.Date(x = data_tidy$Day, format = '%m/%d/%y')
+  return(data_tidy)
+}
+
+df.confirmed.tidy <- data_tidy(df.confirmed.week, values= "confirmed") 
+df.death.tidy <- data_tidy(df.death.week, values= "death") 
+df.recovered.tidy <- data_tidy(df.recovered.week, values= "recovered")
+
+
+
+
+df.confirmed_no_NAN <- df.confirmed.tidy[!is.na(df.confirmed.tidy$Lat) & !is.na(df.confirmed.tidy$Long),]
+
+spdf.confirmed <-  SpatialPointsDataFrame(coords=df.confirmed_no_NAN[, c("Long", "Lat")], data=df.confirmed_no_NAN, proj4string = CRS(countries_sp@proj4string@projargs))
+
+
+
+
+df.death_no_NAN <- df.death.tidy[!is.na(df.death.tidy$Lat) & !is.na(df.death.tidy$Long),]
+
+spdf.death <-  SpatialPointsDataFrame(coords=df.death_no_NAN[, c("Long", "Lat")], data=df.death_no_NAN, proj4string = CRS(countries_sp@proj4string@projargs))
+
+
+
+
+df.recovered_no_NAN <- df.recovered.tidy[!is.na(df.recovered.tidy$Lat) & !is.na(df.recovered.tidy$Long),]
+
+spdf.recovered <-  SpatialPointsDataFrame(coords=df.recovered_no_NAN[, c("Long", "Lat")], data=df.recovered_no_NAN, proj4string = CRS(countries_sp@proj4string@projargs))
+
+
+map <- tm_shape(countries_sp) +
+  tm_borders(col = "black") +
+  tm_shape(spdf.confirmed) + 
+  tm_bubbles(size="confirmed", col='red',scale = 8,alpha = 0.3) +
+  tm_facets(by="Day", free.coords = F, nrow = 1, ncol = 1)
+
+tmap_animation(map, width=1800, height = 900, fps = 4, outer.margins = 0, filename = './gifs/confirmed.gif')
+
+map <- tm_shape(countries_sp) +
+  tm_borders(col = "black") +
+  tm_shape(spdf.death) + 
+  tm_bubbles(size="death", col='purple',scale = 8,alpha = 0.3) +
+  tm_facets(by="Day", free.coords = F, nrow = 1, ncol = 1)
+
+tmap_animation(map, width=1800, height = 900, fps = 4, outer.margins = 0, filename = './gifs/death.gif')
+
+
+map <- tm_shape(countries_sp) +
+  tm_borders(col = "black") +
+  tm_shape(spdf.recovered) + 
+  tm_bubbles(size="recovered", col='green',scale = 8,alpha = 0.3) +
+  tm_facets(by="Day", free.coords = F, nrow = 1, ncol = 1)
+
+tmap_animation(map, width=1800, height = 900, fps = 4, outer.margins = 0, filename = './gifs/recovered.gif')

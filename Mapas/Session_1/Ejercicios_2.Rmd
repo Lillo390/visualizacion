@@ -1,0 +1,193 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"  #Pondría la fecha del día actual
+output:
+ 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  # html_notebook:
+  #   code_folding: hide
+  #   toc: yes
+  #   toc_depth: 4
+# pdf_document:
+#     toc: yes
+#     toc_depth: '4'
+subtitle: 'Parte 2: Visualizaciones básicas con ggmap'
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+## 1. Instalación de librerías.
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","tidyverse","tmap","tmaptools")
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+```
+
+
+```{r,echo=FALSE}
+suppressPackageStartupMessages(library(ggmap))
+suppressPackageStartupMessages(library(rgdal))
+suppressPackageStartupMessages(library(rgeos))
+suppressPackageStartupMessages(library(maptools))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tmap))
+```
+
+
+## ggmap
+
+La librería **ggmap** aporta mayor flexibilidad que **maps** para superponer datos sobre mapas, además de permitir descargar mapas directamente de Google, OpenStreetMaps o Stamen.
+
+El uso de **ggmap()** es muy similar a **ggplot()**. Veremos que se pueden superponer capas a los mapas de igual manera que hacíamos con **maps**.
+Por ejemplo, podemos superponer una capa de puntos al mapa con: ggmap(...) + geom_point(...)
+
+## Visualización de mapas
+
+Vamos a explorar los distintos tipos de mapa de Stamen. Para obtenerlos usaremos la función **get_stamenmap()**.
+Las coordenadas se introducen como un vector de 4 elementos que definen la *bounding_box* del mapa.
+Para dibujar el mapa usaremos **ggmap()**.
+
+```{r}
+
+us <- c(left = -125, bottom = 25.75, right = -67, top = 49)
+get_stamenmap(us, zoom = 5, maptype = "toner-lite") %>% ggmap()
+get_stamenmap(us, zoom = 5, maptype = "toner") %>% ggmap()
+get_stamenmap(us, zoom = 5, maptype = "terrain") %>% ggmap
+get_stamenmap(us, zoom = 5, maptype = "watercolor") %>% ggmap
+```
+
+Podemos obtener las coordenadas de un lugar directamente de servidores como Google usando la función **geocode()** de **tmaptools**. Ya que Google requiere una clave de registro para conectarse a su API, vamos a utilzar **geocode_OSM()** para hacer lo mismo en OpenStreetMaps, de acceso libre. Por ejemplo, vamos a obtener las coordenadas de Viena. A continuación pasamos las coordenadas de la bounding box (bbox) a vector, para introducírselas a la función ***get_stamenmap()** para obtener el mapa de Stamen de Viena. Es posible utilizar la función más general **get_map()** indicando source="stamen".
+
+```{r}
+library(tmaptools)
+
+# Preparamos las coordenadas a partir de las que nos devuelve geocode_OSM
+coordenadas1<-geocode_OSM("Vienna")$bbox
+coordenadas2<-rbind(as.numeric(paste(coordenadas1)))
+#mapa<-get_stamenmap(coordenadas2, zoom = 12)
+mapa<-get_map(coordenadas2, zoom = 12, source="stamen")
+ggmap(mapa)
+```
+
+Muestra el mapa de Stamen de Valencia con un zoom 11 y de la ETSE (busca su dirección) con zoom 16. Usa el tipo terrain-background en ambos casos.
+
+```{r}
+
+```
+
+## Superposición de capas de mapas y datos
+
+Visualiza los primeros datos de crímenes en la ciudad de Houston (dataframe **crime**) 
+
+```{r}
+
+```
+
+Filtra **crime** para obtener los crimenes (offense) más serios: "murder", "rape", "robbery", "burglary" únicamente. Además considera las longitudes entre [-95.39681, -95.34188] y latitudes entre [29.73631, 29.78400] para centrarnos en el centro de Houston. Llama al dataframe resultante **violent_crimes**.
+
+```{r}
+
+```
+
+Descarga un mapa (fuente *stamen*) que pueda representar todos los eventos dentro de las coordenadas anteriores, con zoom=14 y scale=1. Al mapa descargado llámale **houston_map**.
+
+```{r}
+
+```
+
+Representa el mapa con **ggmap(houston_map)** y superpón (al estilo ggplot()) una capa con los datos de la variable **violent_crimes** representados con puntos y distingue el tipo de crimen por color.
+
+```{r}
+
+```
+
+Busca las coordenadas geográficas de las 5 primeras direcciones (columna __address__) de **violent_crimes**.
+
+```{r}
+
+```
+Representa los crimenes de violent_crimes realizados cada mes. Usa facet_wrap.
+
+```{r, fig.height=8, fig.width=8}
+
+```
+
+Representa el tipo de crimen realizado para cada uno de los meses (facet_grid)
+
+```{r}
+
+```
+
+Determina si el número de crímenes depende del día (facet_grid).
+
+```{r}
+
+```
+
+Para facilitar el trabajar con varias capas y que una de las capas contenga los estéticos de capas sucesivas sin tener que reescribirlos es posible usar **base_layer**:
+
+**ggmap(houston_map) + geom_point(aes(lon, lat, color=offense), data = violent_crimes)**
+
+También se puede escribir como
+
+**ggmap(houston_map, base_layer = ggplot(data=violent_crimes, aes(lon, lat, color=offense))) + geom_point()**
+  
+Compruébalo:
+
+```{r}
+
+
+```
+
+La función **qmplot()** (plot rápido de ggmap()) hace en un solo paso la descarga del mapa y representa la capa de datos geográficos sobre él de acuerdo con las posiciones de longitud y latitud proporcionadas. 
+
+Usa qmplot() para hacer un scatterplot que represente la localización de los crímenes en violent_crimes distinguiendo el tipo de crímenes por color.
+
+```{r}
+
+```
+Representar con qmplot() los mapas para los 4 tipos de crimenes anteriores en un facet_wrap de 2x2
+
+```{r}
+
+```
+Representar los crimenes anteriores en un mapa de densidad 2d (parámetro de qmplot: geom = "density2d")
+
+```{r}
+
+```
+
+Parece que hay varias zonas "calientes". Haz una representación más eficiente de las zonas propensas a robos (robbery), usando una capa **stat_density_2d()** con el estético fill=..level.., usa como parámetros: geom="polygon", alpha=0.3 y color = NA. Añade una capa **scale_fill_gradient2()** para añadir la leyenda del gradiente de colores, con los parámetros: low = "white", mid = "yellow", high = "red", midpoint = 650.
+
+```{r}
+
+```
+
+
+ 

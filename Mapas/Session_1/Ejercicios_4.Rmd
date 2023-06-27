@@ -1,0 +1,173 @@
+---
+title: 'Master en Ciencia de Datos: Visualización de datos espaciales'
+author: "Fernando Mateo"
+date:  "`r Sys.Date()`"  #Pondría la fecha del día actual
+output:
+ 
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '4'
+  # html_notebook:
+  #   code_folding: hide
+  #   toc: yes
+  #   toc_depth: 4
+# pdf_document:
+#     toc: yes
+#     toc_depth: '4'
+subtitle: 'Parte 4: Elementos de visualización avanzada en **ggmap**'
+---
+
+```{r setup, include=FALSE}
+## Global code options
+knitr::opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+
+```
+
+## Instalación de librerías.
+
+```{r, echo=FALSE}
+# Especificamos las librerías necesarias en esta lista
+
+packages = c("maps","ggmap","tidyverse","tmap","tmaptools","devtools")
+
+#use this function to check if each package is on the local machine
+#if a package is installed, it will be loaded
+#if any are not, the missing package(s) will be installed and loaded
+package.check <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x, dependencies = TRUE,repos='http://cran.rediris.es')
+    library(x, character.only = TRUE)
+  }
+})
+
+```
+
+
+```{r,echo=FALSE}
+suppressPackageStartupMessages(library(ggmap))
+suppressPackageStartupMessages(library(rgdal))
+suppressPackageStartupMessages(library(rgeos))
+suppressPackageStartupMessages(library(maptools))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(tmap))
+```
+
+## Carga de datos
+
+Cargamos la librería **Geospatial** para utilizar algunos ficheros de datos. Esta librería no está en el repositorio habitual y se debe instalar así:
+
+**devtools::install_github("cwickham/geospatial")** 
+
+Estos datos se usan en el curso **Working with Geospatial data in R** de **DataCamp**
+
+```{r}
+#install.packages("devtools")
+#devtools::install_github("cwickham/geospatial")
+library(geospatial)
+```
+
+Veremos diferentes tipos de Spatial Data:
+
+1. Puntos
+2. Líneas
+3. Áreas
+4. Raster (o malla)
+
+Carga el conjunto de datos *ward_sales*, que contiene datos de localización de ventas de inmuebles. Mira la estructura con str() y head().
+
+```{r}
+ward_sales <- geospatial::ward_sales
+```
+
+**ward** hace referencia al distrito. **order**  especifica el orden en el que se deben unir los puntos para formar el polígono y **group** el identificador del polígono (un distrito **ward** puede venir definido por más de un polígono **group**). **num_sales** y **avg_price** son dos variables medidas en el área definida por el polígono. (para más información sobre los datos consulta la ayuda **?ward_sales**)
+
+Descarga de Stamen un mapa centrado en lon= -123.27, lat = 44.56 y con una desviación de $\pm$ 0.07 en cada coordenada, zoom=12 y maptype='terrain' y llámalo **corvallis_map**. Dibújalo con ggmap().
+
+```{r}
+
+```
+
+## Ejercicio 1: Mapa choropleth
+
+Dibuja el mapa con ggmap() usando como base_layer un ggplot para establecer como coordenadas *x=lon* *y=lat* de *ward_sales*. Añade un scatterplot y colorea los puntos según la variable *ward*.
+
+```{r}
+lon = -123.28
+lat = 44.56
+ampli <- 0.07
+ventana <- c(lon - ampli,lat - ampli, lon + ampli, lat + ampli)
+corvallis_map <- get_stamenmap(ventana,zoom = 12, maptype = 'terrain')
+ggmap(corvallis_map,base_layer = ggplot(data=ward_sales,aes(lon,lat)))+geom_point(aes(color=ward))
+```
+Repite el apartado anterior coloreando según *group*. Observa que hay *wards* que tienen "huecos" y por ello están descritas por más de un polígono.
+
+```{r}
+
+```
+Usa geom_path() en vez de geom_point() y utiliza como *aesthetic* **group** la variable **group** 
+
+```{r}
+
+```
+
+Repite pero usando geom_polygon() en vez de geom_path(), y rellena (fill) con la variable *ward*, **group=group** y alpha=0.5.
+
+```{r}
+
+```
+
+Representa en el mapa de Corvallis una capa geom_polygon donde cada distrito tenga un tono de relleno (fill) según el número de ventas (*num_sales*) en el distrito. Este tipo de mapa lo conocemos como Choropleth.
+
+```{r}
+
+```
+
+Repite pero representando como relleno el precio medio *avg_price* por distrito.
+
+```{r}
+
+```
+
+Interpreta el resultado de los dos mapas anteriores. ¿Cómo se relaciona el número de ventas con el precio de la vivienda en un distrito?
+
+## Ejercicio 2: Raster map
+
+En los mapas de tipo **raster** los valores de la variable a representar se conocen en una retícula de pares longitud/latitud. Tiene una estructura de tipo matricial. Es la forma habitual de las imágenes de satélite, pudiendo tener una o varias capas.
+
+Usa el conjunto de datos **preds**. Muestra los 10 primeros datos del dataframe **preds**.
+
+```{r}
+head(preds,n=10)
+```
+
+Realiza con ggplot() una representación de los puntos con la longitud en el eje x y la latitud en el eje y. Observa la retícula.
+
+```{r}
+ggplot(data=preds,aes(x=lon,y=lat))+geom_point()
+```
+
+**geom_tile()** representa un rectángulo centrado en cada localización de la rejilla. Úsalo para representar la variable **predicted_price** (estético fill).
+
+```{r}
+ggplot(data=preds, aes(x=lon,y=lat))+geom_tile(aes(fill=predicted_price))
+```
+
+Repite el apartado anterior utilizando **geom_raster()**
+
+```{r}
+ggplot(data=preds, aes(x=lon,y=lat))+geom_raster(aes(fill=predicted_price))
+```
+Superpón esta capa sobre el mapa **corvallis_map** (usa geom_tile con alpha=0.8).
+
+```{r}
+ggmap(corvallis_map,base_layer = ggplot(data=preds,aes(lon,lat,fill=predicted_price)))+geom_tile(alpha = 0.8)
+```
+
+

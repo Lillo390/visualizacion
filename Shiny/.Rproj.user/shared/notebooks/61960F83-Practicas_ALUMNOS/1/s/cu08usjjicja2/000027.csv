@@ -1,0 +1,9 @@
+"0",""
+"0","ui_hello <- fluidPage(titlePanel(""Hola mundo!""))"
+"0",""
+"0","server_hello <- function(input, output) { }"
+"0",""
+"0","shinyApp(ui_hello, server_hello)"
+"2","
+Listening on http://127.0.0.1:3212
+"

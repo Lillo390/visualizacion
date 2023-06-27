@@ -1,0 +1,15 @@
+"0",""
+"0","library(tmap)"
+"0",""
+"0","# Crear el mapa"
+"0","map <- tm_shape(countries_sp) +"
+"0","  tm_borders(col = ""black"") +"
+"0","  tm_fill(col = ""confirmed"", palette = ""Reds"") +"
+"0","  tm_facets(by = ""Day"", free.coords = FALSE, nrow = 1, ncol = 1)"
+"0",""
+"0","# Generar la animación"
+"0","tmap_animation(map, width = 1800, height = 900, fps = 4, outer.margins = 0, filename = ""confirmed.gif"")"
+"1","Creating frames
+"
+"2","Error: Variable(s) ""Day"" not found in countries_sp
+"

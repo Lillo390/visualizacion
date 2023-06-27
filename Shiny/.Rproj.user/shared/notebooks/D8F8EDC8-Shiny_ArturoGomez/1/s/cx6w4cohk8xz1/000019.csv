@@ -1,0 +1,375 @@
+"0","library(shiny)"
+"2","Warning: package ‘shiny’ was built under R version 4.2.2"
+"0","library(rsconnect)"
+"2","Warning: package ‘rsconnect’ was built under R version 4.2.2"
+"2","
+Attaching package: ‘rsconnect’
+
+"
+"2","The following object is masked from ‘package:shiny’:
+
+    serverInfo
+
+"
+"0","library(shinythemes)"
+"2","Warning: package ‘shinythemes’ was built under R version 4.2.2"
+"0","library(dplyr)"
+"2","Warning: package ‘dplyr’ was built under R version 4.2.2"
+"2","
+Attaching package: ‘dplyr’
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+"
+"0","library(ggplot2)"
+"2","Warning: package ‘ggplot2’ was built under R version 4.2.3"
+"2","Use suppressPackageStartupMessages() to eliminate package startup
+messages
+"
+"0","ui<-navbarPage(theme = shinytheme(""darkly""),"
+"0","               ""App Máster Ciencia de datos "","
+"0","               "
+"0","               "
+"0","               "
+"0","  tabPanel(""Selección de máquina"", "
+"0","           sidebarLayout("
+"0","          sidebarPanel(h5(""MÁQUINA""),"
+"0","                       fileInput(""DatosFichero"", ""Selecciona un fichero"", accept = NULL),"
+"0","                       uiOutput('Buttons')"
+"0","                       "
+"0","                       ),"
+"0","          mainPanel(""Probabilidad de orden"","
+"0","                    plotOutput(""GrafOrden""))"
+"0","             )),"
+"0","  "
+"0","  "
+"0","  "
+"0","  "
+"0","  navbarMenu(""Estado de la máquina"","
+"0","             tabPanel(""Evolución temporal alarmas"","
+"0","                      sidebarLayout("
+"0","          sidebarPanel(h5(""ALARMAS radiobuttons""),"
+"0","                       uiOutput(""AlarmRadio"")"
+"0","                       ),"
+"0","          mainPanel(""Evolución temporal Alarmas"","
+"0","                    plotOutput(""GrafVars""))"
+"0","             )),"
+"0","          "
+"0","          "
+"0","          "
+"0",""
+"0","             tabPanel(""Registros de la máquina"","
+"0","                      sidebarLayout("
+"0","          sidebarPanel(h5(""ALARMAS checkbox""),"
+"0","                       uiOutput(""SelAl"")"
+"0","                       ),"
+"0","          mainPanel(""Registros de la máquina seleccionada"","
+"0","                    dataTableOutput('tbl')"
+"0","                    )"
+"0","             ))"
+"0","             ),"
+"0","  "
+"0","  "
+"0","  "
+"0","  "
+"0","  "
+"0","  tabPanel(""Estadísticas Globales Temporales"", "
+"0","           sidebarLayout("
+"0","          sidebarPanel(h5(""PERIODO Y ESTADÍSTICAS""),"
+"0","                      dateRangeInput(""rangFech"", ""Selecciona el periodo"", start = ""2016-01-01"", end = ""2016-12-31"", format = ""yyyy-mm-dd"", separator= ""a""),"
+"0","                      h5(""HISTOGRAMA""),"
+"0","                      uiOutput(""SelAl2""),"
+"0","                      sliderInput(""slider1"", ""Ancho del bin del histograma"", "
+"0","                                 min= 1, max = 50, value = 20, step= 1),"
+"0","                      h5(""BOXPLOT""),"
+"0","                      checkboxInput(""checkTodasAlarm"", ""Todas las máquinas"", value = FALSE, width = NULL)"
+"0","                       "
+"0","                       ),"
+"0","          mainPanel(""Histograma de la alarma seleccionada"","
+"0","                    plotOutput(""Histo""),"
+"0","                    ""Boxplot de la alarma seleccionada"","
+"0","                    plotOutput(""BoxPlt""))"
+"0","             ))"
+"0",")"
+"0",""
+"0",""
+"0","server <- function(input, output) {"
+"0","  "
+"0","  "
+"0","    Datos<-reactive({"
+"0","                      a<-input$DatosFichero"
+"0","                      req(a)"
+"0","                      nombre_df<-load(a$datapath)"
+"0","                      Datos<-eval(parse(text=nombre_df))"
+"0","                      return(Datos)"
+"0","                    })"
+"0","    "
+"0",""
+"0","    "
+"0","    output$Buttons <- renderUI({"
+"0","      "
+"0","      tagList(selectInput(""SelectMaq"", ""Selecciona máquina"", unique(Datos()[['matricula']])))"
+"0","      "
+"0","    })"
+"0","    "
+"0","    "
+"0","    output$AlarmRadio <- renderUI({"
+"0","      "
+"0","        radioButtons(""selectAlarm"", ""Selecciona la alarma a visualizar"", "
+"0","                       names(Datos())[4:48])"
+"0","      "
+"0","    })"
+"0","    "
+"0","    "
+"0","    output$SelAl <- renderUI({"
+"0","      "
+"0","      checkboxGroupInput(""checkAlarms"", ""Selecciona las alarmas para ver en la tabla"", names(Datos())[4:48])"
+"0","      "
+"0","    })"
+"0","    "
+"0","    "
+"0","    output$SelAl2<-renderUI({"
+"0","      "
+"0","      selectInput(""SelectAlarm2"", ""Alarma"", names(Datos())[4:48])"
+"0","      "
+"0","    })"
+"0","  "
+"0",""
+"0","    output$tbl <- renderDataTable(Datos()[c(""matricula"", ""dia"", input$checkAlarms,""p_orden"")])"
+"0","  "
+"0","    "
+"0","    output$GrafOrden <- renderPlot({"
+"0","        data <- Datos() %>% dplyr::filter(matricula == input$SelectMaq)"
+"0","        data %>% ggplot(aes(x = dia, y = p_orden, color = p_orden)) +"
+"0","          geom_line()+geom_point() + xlab('Dia') + ylab('p_orden') "
+"0","                 "
+"0","    })"
+"0","    "
+"0","    "
+"0","    output$GrafVars <- renderPlot({"
+"0","      "
+"0","        data <- Datos() %>% dplyr::filter(matricula == input$SelectMaq)"
+"0","        data %>% ggplot(aes_string(x = 'dia', y = input$selectAlarm)) +"
+"0","          geom_line()+ geom_point() + xlab('Dia') + ylab(input$selectAlarm) "
+"0","                  "
+"0","    })    "
+"0","  "
+"0"," "
+"0","    output$Histo <- renderPlot({"
+"0","        "
+"0","        dats<-filter(Datos(), matricula == input$SelectMaq)"
+"0","        dats2<-filter(dats, dia>=input$rangFech[1] & dia<input$rangFech[2])"
+"0","        dats2 %>% ggplot(aes_string(x = input$SelectAlarm2)) +"
+"0","           geom_histogram(binwidth = input$slider1) + xlab(input$SelectAlarm2) + ylab(""count"") "
+"0","                  "
+"0","    })    "
+"0","     "
+"0","    "
+"0","    output$BoxPlt <- renderPlot({"
+"0","    "
+"0","      "
+"0","    "
+"0","    if(input$checkTodasAlarm == FALSE){  "
+"0","      dats <- filter(Datos(), matricula == input$SelectMaq)"
+"0","      dats2<-filter(dats, dia>=input$rangFech[1] & dia<input$rangFech[2])"
+"0","      dats2 %>% ggplot(aes_string(x = ""matricula"", y = input$SelectAlarm2)) + "
+"0","  geom_boxplot() + "
+"0","  labs(x = ""factor(matrícula)"", y = ""eval(ALA)"")"
+"0","      "
+"0","    }else{"
+"0","      "
+"0","      dats<-filter(Datos(), dia>=input$rangFech[1] & dia<input$rangFech[2])"
+"0","      y <- dats[,input$SelectAlarm2]"
+"0","      dats %>% ggplot(aes(x = factor(matricula), y = y)) + "
+"0","  geom_boxplot() + "
+"0","  labs(x = ""factor(matrícula)"", y = ""eval(ALA)"")"
+"0","      "
+"0","    }"
+"0","      "
+"0","      "
+"0","      })"
+"0","  "
+"0","}            "
+"0",""
+"0",""
+"0","shinyApp(ui, server)"
+"2","
+Listening on http://127.0.0.1:3867
+"
+"2","  187: [37m<Anonymous>[39m
+"
+"2",""
+"2","  186: [37msignalCondition[39m
+"
+"2",""
+"2","  185: [37msignal_abort[39m
+"
+"2",""
+"2","  184: [37mabort[39m
+"
+"2",""
+"2","  183: [37m<Anonymous>[39m
+"
+"2",""
+"2","  182: [37msignalCondition[39m
+"
+"2",""
+"2","  181: [37msignal_abort[39m
+"
+"2",""
+"2","  180: [37mabort[39m
+"
+"2",""
+"2","  179: [37mdplyr_internal_error[39m
+"
+"2",""
+"2","  178: [37meval[39m
+"
+"2",""
+"2","  177: [37mmask$eval_all_filter[39m
+"
+"2",""
+"2","  175: [37mfilter_eval[39m
+"
+"2",""
+"2","  174: [37mfilter_rows[39m
+"
+"2",""
+"2","  173: [37mfilter.data.frame[39m
+"
+"2",""
+"2","  172: [37mdplyr::filter[39m
+"
+"2",""
+"2","  171: [37m%>%[39m
+"
+"2",""
+"2","  170: [34m[1mrenderPlot [#47][22m[39m
+"
+"2",""
+"2","  168: [37mfunc[39m
+"
+"2",""
+"2","  128: [37mdrawPlot[39m
+"
+"2",""
+"2","  114: [37m<reactive:plotObj>[39m
+"
+"2",""
+"2","   98: [37mdrawReactive[39m
+"
+"2",""
+"2","   85: [37mrenderFunc[39m
+"
+"2",""
+"2","   84: [37moutput$GrafOrden[39m
+"
+"2",""
+"2","    3: [37mrunApp[39m
+"
+"2",""
+"2","    2: [37mprint.shiny.appobj[39m
+"
+"2",""
+"2","    1: [37m<Anonymous>[39m
+"
+"2","  198: [37m<Anonymous>[39m
+"
+"2",""
+"2","  197: [37msignalCondition[39m
+"
+"2",""
+"2","  196: [37msignal_abort[39m
+"
+"2",""
+"2","  195: [37mrlang::abort[39m
+"
+"2",""
+"2","  194: [37mcli::cli_abort[39m
+"
+"2",""
+"2","  193: [37mhandlers[[1L]][39m
+"
+"2",""
+"2","  192: [37m<Anonymous>[39m
+"
+"2",""
+"2","  191: [37msignalCondition[39m
+"
+"2",""
+"2","  190: [37msignal_abort[39m
+"
+"2",""
+"2","  189: [37mrlang::abort[39m
+"
+"2",""
+"2","  188: [37mcli::cli_abort[39m
+"
+"2",""
+"2","  187: [37mcheck_required_aesthetics[39m
+"
+"2",""
+"2","  186: [37mcompute_geom_1[39m
+"
+"2",""
+"2","  185: [37ml$compute_geom_1[39m
+"
+"2",""
+"2","  184: [37mf[39m
+"
+"2",""
+"2","  177: [37mby_layer[39m
+"
+"2",""
+"2","  176: [37mggplot_build.ggplot[39m
+"
+"2",""
+"2","  174: [37mprint.ggplot[39m
+"
+"2",""
+"2","  169: [37mfunc[39m
+"
+"2",""
+"2","  167: [37mf[39m
+"
+"2",""
+"2","  166: [37mReduce[39m
+"
+"2",""
+"2","  157: [37mdo[39m
+"
+"2",""
+"2","  156: [37mhybrid_chain[39m
+"
+"2",""
+"2","  128: [37mdrawPlot[39m
+"
+"2",""
+"2","  114: [37m<reactive:plotObj>[39m
+"
+"2",""
+"2","   98: [37mdrawReactive[39m
+"
+"2",""
+"2","   85: [37mrenderFunc[39m
+"
+"2",""
+"2","   84: [37moutput$GrafVars[39m
+"
+"2",""
+"2","    3: [37mrunApp[39m
+"
+"2",""
+"2","    2: [37mprint.shiny.appobj[39m
+"
+"2",""
+"2","    1: [37m<Anonymous>[39m
+"
